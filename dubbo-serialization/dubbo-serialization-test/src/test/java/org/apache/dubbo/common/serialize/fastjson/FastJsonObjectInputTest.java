@@ -17,13 +17,8 @@
 package org.apache.dubbo.common.serialize.fastjson;
 
 import com.alibaba.fastjson.JSONObject;
-
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.util.List;
 import org.apache.dubbo.common.serialize.model.Organization;
 import org.apache.dubbo.common.serialize.model.Person;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -31,11 +26,14 @@ import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.core.Is.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FastJsonObjectInputTest {
@@ -158,10 +156,14 @@ public class FastJsonObjectInputTest {
     }
 
 
+    /**
+     * 测试通用返回类型
+     */
     @Test
     public void testReadObjectWithTowType() throws Exception {
         fastJsonObjectInput = new FastJsonObjectInput(new StringReader("[{\"name\":\"John\",\"age\":30},{\"name\":\"Born\",\"age\":24}]"));
 
+        // 获取 towLayer 方法的返回类型
         Method methodReturnType = getClass().getMethod("towLayer");
         Type type = methodReturnType.getGenericReturnType();
         List<Person> o = fastJsonObjectInput.readObject(List.class, type);
