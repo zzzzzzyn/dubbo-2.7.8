@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * zk实例
  * Represents the default payload of a registered service in Zookeeper.
  * <p>
  * It's compatible with Spring Cloud

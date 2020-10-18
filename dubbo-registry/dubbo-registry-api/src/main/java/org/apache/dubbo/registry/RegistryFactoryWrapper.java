@@ -22,6 +22,9 @@ import org.apache.dubbo.common.extension.ExtensionLoader;
 
 import java.util.Collections;
 
+/**
+ * 注册工厂包装器（装饰者模式）
+ */
 public class RegistryFactoryWrapper implements RegistryFactory {
     private RegistryFactory registryFactory;
 
