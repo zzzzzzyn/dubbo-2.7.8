@@ -23,32 +23,14 @@ import org.apache.dubbo.common.extension.support.WrapperComparator;
 import org.apache.dubbo.common.lang.Prioritized;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.utils.ArrayUtils;
-import org.apache.dubbo.common.utils.ClassUtils;
-import org.apache.dubbo.common.utils.CollectionUtils;
-import org.apache.dubbo.common.utils.ConcurrentHashSet;
-import org.apache.dubbo.common.utils.ConfigUtils;
-import org.apache.dubbo.common.utils.Holder;
-import org.apache.dubbo.common.utils.ReflectUtils;
-import org.apache.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.common.utils.*;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
@@ -57,9 +39,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.sort;
 import static java.util.ServiceLoader.load;
 import static java.util.stream.StreamSupport.stream;
-import static org.apache.dubbo.common.constants.CommonConstants.COMMA_SPLIT_PATTERN;
-import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_KEY;
-import static org.apache.dubbo.common.constants.CommonConstants.REMOVE_VALUE_PREFIX;
+import static org.apache.dubbo.common.constants.CommonConstants.*;
 
 /**
  * {@link org.apache.dubbo.rpc.model.ApplicationModel}, {@code DubboBootstrap} and this class are
@@ -151,6 +131,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
+        // 合法性检查
         if (type == null) {
             throw new IllegalArgumentException("Extension type == null");
         }
@@ -418,10 +399,13 @@ public class ExtensionLoader<T> {
             throw new IllegalArgumentException("Extension name == null");
         }
         if ("true".equals(name)) {
+            // 获取默认的拓展实现类
             return getDefaultExtension();
         }
+        // Holder，顾名思义，用于持有目标对象
         final Holder<Object> holder = getOrCreateHolder(name);
         Object instance = holder.get();
+        // 双重检查
         if (instance == null) {
             synchronized (holder) {
                 instance = holder.get();
@@ -625,6 +609,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name, boolean wrap) {
+        // 从配置文件中加载所有的拓展类，可得到“配置项名称”到“配置类”的映射关系
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null) {
             throw findException(name);
@@ -632,9 +617,11 @@ public class ExtensionLoader<T> {
         try {
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
+                // 反射创建实例
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            // 向实例中注入依赖
             injectExtension(instance);
 
 
@@ -677,6 +664,7 @@ public class ExtensionLoader<T> {
         }
 
         try {
+            // 反射遍历实例所有方法
             for (Method method : instance.getClass().getMethods()) {
                 if (!isSetter(method)) {
                     continue;
@@ -752,11 +740,13 @@ public class ExtensionLoader<T> {
     }
 
     private Map<String, Class<?>> getExtensionClasses() {
+        // 从缓存中获取已加载的拓展类
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    // 加载拓展类
                     classes = loadExtensionClasses();
                     cachedClasses.set(classes);
                 }
@@ -769,6 +759,7 @@ public class ExtensionLoader<T> {
      * synchronized in getExtensionClasses
      */
     private Map<String, Class<?>> loadExtensionClasses() {
+        // 缓存默认拓展名
         cacheDefaultExtensionName();
 
         Map<String, Class<?>> extensionClasses = new HashMap<>();
@@ -809,6 +800,7 @@ public class ExtensionLoader<T> {
 
     private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir, String type,
                                boolean extensionLoaderClassLoaderFirst, boolean overridden, String... excludedPackages) {
+        // 文件夹路径 + type 全限定名
         String fileName = dir + type;
         try {
             Enumeration<java.net.URL> urls = null;
@@ -833,6 +825,7 @@ public class ExtensionLoader<T> {
             if (urls != null) {
                 while (urls.hasMoreElements()) {
                     java.net.URL resourceURL = urls.nextElement();
+                    // 加载资源
                     loadResource(extensionClasses, classLoader, resourceURL, overridden, excludedPackages);
                 }
             }
@@ -847,21 +840,26 @@ public class ExtensionLoader<T> {
         try {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(resourceURL.openStream(), StandardCharsets.UTF_8))) {
                 String line;
+                // 按行读取
                 while ((line = reader.readLine()) != null) {
+                    // 定位到 # 字符
                     final int ci = line.indexOf('#');
                     if (ci >= 0) {
+                        // 截取 # 之前的字符，# 之后的是注释
                         line = line.substring(0, ci);
                     }
                     line = line.trim();
                     if (line.length() > 0) {
                         try {
                             String name = null;
+                            // 定位到 = 字符，截取键与值
                             int i = line.indexOf('=');
                             if (i > 0) {
                                 name = line.substring(0, i).trim();
                                 line = line.substring(i + 1).trim();
                             }
                             if (line.length() > 0 && !isExcluded(line, excludedPackages)) {
+                                // 加载类，并通过 loadClass 方法对类进行缓存
                                 loadClass(extensionClasses, resourceURL, Class.forName(line, true, classLoader), name, overridden);
                             }
                         } catch (Throwable t) {
@@ -895,11 +893,15 @@ public class ExtensionLoader<T> {
                     type + ", class line: " + clazz.getName() + "), class "
                     + clazz.getName() + " is not subtype of interface.");
         }
+
+        // clazz 上是否包含 Adaptive 注解
         if (clazz.isAnnotationPresent(Adaptive.class)) {
             cacheAdaptiveClass(clazz, overridden);
         } else if (isWrapperClass(clazz)) {
+            // 检查是否为 Wrapper 类型
             cacheWrapperClass(clazz);
         } else {
+            // 普通拓展类
             clazz.getConstructor();
             if (StringUtils.isEmpty(name)) {
                 name = findAnnotationName(clazz);
@@ -912,7 +914,9 @@ public class ExtensionLoader<T> {
             if (ArrayUtils.isNotEmpty(names)) {
                 cacheActivateClass(clazz, names[0]);
                 for (String n : names) {
+                    // 存储 Class 到名称的映射关系
                     cacheName(clazz, n);
+                    // 存储名称到 Class 的映射关系
                     saveInExtensionClass(extensionClasses, clazz, n, overridden);
                 }
             }
