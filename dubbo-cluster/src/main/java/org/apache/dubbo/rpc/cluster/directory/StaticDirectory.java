@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
+ * 静态目录
  * StaticDirectory
  */
 public class StaticDirectory<T> extends AbstractDirectory<T> {
@@ -84,7 +85,9 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
         if (isDestroyed()) {
             return;
         }
+        // 调用父类销毁逻辑
         super.destroy();
+        // 遍历 invokers 并销毁
         for (Invoker<T> invoker : invokers) {
             invoker.destroy();
         }
